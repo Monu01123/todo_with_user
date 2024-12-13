@@ -1,20 +1,19 @@
-import todo from "../models/todo.model.js";
+import jwt from 'jsonwebtoken';
+import User from '../models/user.models.js';
 
-const checkTaskOwnership = async (req, res, next) => {
+const protect = async (req, res, next) => {
+  let token;
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
     try {
-      const task = await todo.findById(req.params.id);
-  
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-  
-      if (task.user.toString() !== req.params.userId) {
-        return res.status(403).json({ message: "You are not authorized to modify this task" });
-      }
+      token = req.headers.authorization.split(' ')[1];
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select('-password');
       next();
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      res.status(401).json({ message: 'Not authorized' });
     }
-  };
+  }
+  if (!token) res.status(401).json({ message: 'No token, not authorized' });
+};
 
-  export default checkTaskOwnership;
+export { protect };
